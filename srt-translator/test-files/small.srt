@@ -1,0 +1,41 @@
+1
+00:00:01,000 --> 00:00:03,000
+Hello, world!
+
+2
+00:00:04,000 --> 00:00:06,500
+This is a simple subtitle file.
+
+3
+00:00:07,000 --> 00:00:10,000
+It has three cues for testing.
+
+4
+00:00:11,000 --> 00:00:14,000
+<i>This one has HTML tags</i>
+
+5
+00:00:15,000 --> 00:00:18,000
+{\an8}And this has SRT style tags
+
+6
+00:00:19,000 --> 00:00:22,000
+Let's test context-aware translation!
+
+7
+00:00:23,000 --> 00:00:26,000
+Multiple lines
+in one cue
+should work fine.
+
+8
+00:00:27,000 --> 00:00:30,000
+Testing timecode preservation...
+
+9
+00:00:31,000 --> 00:00:34,000
+Almost done with our test!
+
+10
+00:00:35,000 --> 00:00:38,000
+Final cue. Thank you!

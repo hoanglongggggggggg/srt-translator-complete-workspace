@@ -1,0 +1,119 @@
+1
+00:00:01,000 --> 00:00:02,500
+Welcome to the show!
+
+2
+00:00:03,000 --> 00:00:05,000
+Today we're testing batch translation.
+
+3
+00:00:05,500 --> 00:00:08,000
+This file has exactly 30 cues.
+
+4
+00:00:08,500 --> 00:00:11,000
+Testing context windows...
+
+5
+00:00:11,500 --> 00:00:14,000
+<b>Bold text</b> should be preserved.
+
+6
+00:00:14,500 --> 00:00:17,000
+Regular subtitle line here.
+
+7
+00:00:17,500 --> 00:00:20,000
+{\an8}Top-aligned text
+
+8
+00:00:20,500 --> 00:00:23,000
+<i>Italic text for emphasis</i>
+
+9
+00:00:23,500 --> 00:00:26,000
+Normal line again.
+
+10
+00:00:26,500 --> 00:00:29,000
+This is cue number ten.
+
+11
+00:00:29,500 --> 00:00:32,000
+Second batch should start around here.
+
+12
+00:00:32,500 --> 00:00:35,000
+If batch size is 25, we're in batch 1.
+
+13
+00:00:35,500 --> 00:00:38,000
+Testing overflow behavior.
+
+14
+00:00:38,500 --> 00:00:41,000
+<font color="#FF0000">Red text</font>
+
+15
+00:00:41,500 --> 00:00:44,000
+Halfway through!
+
+16
+00:00:44,500 --> 00:00:47,000
+More content...
+
+17
+00:00:47,500 --> 00:00:50,000
+Line seventeen.
+
+18
+00:00:50,500 --> 00:00:53,000
+Line eighteen.
+
+19
+00:00:53,500 --> 00:00:56,000
+Line nineteen.
+
+20
+00:00:56,500 --> 00:00:59,000
+Twenty!
+
+21
+00:00:59,500 --> 00:01:02,000
+Getting close to the end.
+
+22
+00:01:02,500 --> 00:01:05,000
+Line twenty-two.
+
+23
+00:01:05,500 --> 00:01:08,000
+Line twenty-three.
+
+24
+00:01:08,500 --> 00:01:11,000
+Line twenty-four.
+
+25
+00:01:11,500 --> 00:01:14,000
+Exactly at batch boundary!
+
+26
+00:01:14,500 --> 00:01:17,000
+Second batch if size=25.
+
+27
+00:01:17,500 --> 00:01:20,000
+Line twenty-seven.
+
+28
+00:01:20,500 --> 00:01:23,000
+Almost done...
+
+29
+00:01:23,500 --> 00:01:26,000
+Penultimate cue.
+
+30
+00:01:26,500 --> 00:01:29,000
+The end! Goodbye!

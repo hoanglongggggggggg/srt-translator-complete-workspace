@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+target/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Tauri
+src-tauri/target/
+
+# OpenCode & Backlog
+.opencode/
+.beads/
+
+# CLIProxyAPI logs (prevent accidental commit)
+src-tauri/logs/
+*.key
+*.pub

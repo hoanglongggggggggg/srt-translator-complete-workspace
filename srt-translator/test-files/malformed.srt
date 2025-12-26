@@ -1,0 +1,20 @@
+1
+00:00:01,000 --> 00:00:03,000
+Missing index line test
+
+00:00:04,000 --> 00:00:06,000
+This cue is missing its index
+
+3
+00:00:07,000 --> 00:00:10,000
+Back to normal
+
+4
+00:00:11,000 --> 00:00:14,000
+
+
+Extra blank lines above
+
+5
+00:00:15,000 --> 00:00:18,000
+Final cue

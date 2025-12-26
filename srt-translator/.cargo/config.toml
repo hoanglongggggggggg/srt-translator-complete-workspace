@@ -1,0 +1,11 @@
+[build]
+incremental = false
+
+[profile.dev]
+incremental = false
+codegen-units = 1
+
+[profile.release]
+incremental = false
+codegen-units = 1
+

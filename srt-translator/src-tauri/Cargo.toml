@@ -1,0 +1,28 @@
+[package]
+name = "srt-translator"
+version = "0.1.0"
+description = "AI-powered SRT subtitle translator"
+authors = ["you"]
+edition = "2021"
+
+[lib]
+name = "srt_translator_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "sync", "process", "io-util"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+thiserror = "1"
+encoding_rs = "0.8"
+chardetng = "0.1"
+uuid = { version = "1", features = ["v4"] }
+regex = "1.10"
+dirs = "5"
