@@ -1,0 +1,227 @@
+#[cfg(test)]
+mod batch_processing_tests {
+    use super::*;
+
+    // -----------------------
+    // Helpers
+    // -----------------------
+
+    // Nếu bạn đã dùng placeholder khác thì đổi lại cho khớp
+    fn encode(text: &str) -> String {
+        encode_newlines(text)
+    }
+    fn decode(text: &str) -> String {
+        decode_newlines(text)
+    }
+
+    // -----------------------
+    // 1) Encode/Decode tests
+    // -----------------------
+
+    #[test]
+    fn encode_decode_roundtrip_simple_newlines() {
+        let original = "Line 1\nLine 2\nLine 3";
+        let encoded = encode(original);
+        assert_eq!(encoded, "Line 1<NL>Line 2<NL>Line 3");
+        let decoded = decode(&encoded);
+        assert_eq!(decoded, original);
+    }
+
+    #[test]
+    fn encode_normalizes_crlf_and_cr() {
+        let windows = "A\r\nB\rC";
+        let encoded = encode(windows);
+        // normalize -> "A\nB\nC" then encode newlines
+        assert_eq!(encoded, "A<NL>B<NL>C");
+        let decoded = decode(&encoded);
+        assert_eq!(decoded, "A\nB\nC");
+    }
+
+    #[test]
+    fn encode_escapes_token_collision() {
+        let original = "Text with <NL> literal token";
+        let encoded = encode(original);
+        // literal <NL> should be escaped into <NL><NL>
+        assert_eq!(encoded, "Text with <NL><NL> literal token");
+        let decoded = decode(&encoded);
+        assert_eq!(decoded, original);
+    }
+
+    #[test]
+    fn encode_both_token_and_real_newlines() {
+        let original = "A<NL>\nB";
+        let encoded = encode(original);
+        // Step 1 escape literal token: "A<NL><NL>\nB"
+        // Step 2 encode newline: "A<NL><NL><NL>B"
+        assert_eq!(encoded, "A<NL><NL><NL>B");
+        let decoded = decode(&encoded);
+        assert_eq!(decoded, original);
+    }
+
+    // -----------------------
+    // 2) Parser tests
+    // -----------------------
+
+    #[test]
+    fn parse_basic_with_begin_end() {
+        let response = "BEGIN\n1. First\n2. Second\nEND";
+        let result = parse_numbered_response(response, 2).unwrap();
+        assert_eq!(result, vec!["First", "Second"]);
+    }
+
+    #[test]
+    fn parse_parenthesis_numbering() {
+        let response = "BEGIN\n1) One\n2) Two\nEND";
+        let result = parse_numbered_response(response, 2).unwrap();
+        assert_eq!(result, vec!["One", "Two"]);
+    }
+
+    #[test]
+    fn parse_without_begin_end_fallback() {
+        let response = "Here you go:\n1. Alpha\n2. Beta";
+        let result = parse_numbered_response(response, 2).unwrap();
+        assert_eq!(result, vec!["Alpha", "Beta"]);
+    }
+
+    #[test]
+    fn parse_begin_end_not_confused_by_friendly() {
+        let response = "These are FRIENDLY translations:\nBEGIN\n1. A\nEND\nDone";
+        let result = parse_numbered_response(response, 1).unwrap();
+        assert_eq!(result, vec!["A"]);
+    }
+
+    #[test]
+    fn parse_continuation_lines_are_appended() {
+        let response = "BEGIN\n1. Line one\n   continues here\n2. Next\nEND";
+        let result = parse_numbered_response(response, 2).unwrap();
+        assert_eq!(result[0], "Line one\ncontinues here");
+        assert_eq!(result[1], "Next");
+    }
+
+    #[test]
+    fn parse_ignores_heading_and_blank_lines() {
+        let response = "Some heading\n\nBEGIN\n\n1. A\n\n2. B\n\nEND\nFooter";
+        let result = parse_numbered_response(response, 2).unwrap();
+        assert_eq!(result, vec!["A", "B"]);
+    }
+
+    #[test]
+    fn parse_decodes_nl_token_to_real_newlines() {
+        let response = "BEGIN\n1. Line1<NL>Line2\n2. Plain\nEND";
+        let result = parse_numbered_response(response, 2).unwrap();
+        assert_eq!(result[0], "Line1\nLine2");
+        assert_eq!(result[1], "Plain");
+    }
+
+    #[test]
+    fn parse_missing_item_errors_with_missing_list() {
+        let response = "BEGIN\n1. One\n3. Three\nEND";
+        let err = parse_numbered_response(response, 3).unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("Missing"));
+        assert!(msg.contains("[2]"));
+    }
+
+    #[test]
+    fn parse_zero_based_numbering_is_invalid() {
+        let response = "BEGIN\n0. Zero\n1. One\nEND";
+        let err = parse_numbered_response(response, 2).unwrap_err();
+        let msg = err.to_string();
+        // tuỳ message bạn format, nhưng nên có nhắc đến 0 hoặc extra/invalid
+        assert!(msg.contains("0") || msg.contains("Extra") || msg.contains("Invalid"));
+    }
+
+    #[test]
+    fn parse_duplicate_number_should_error() {
+        let response = "BEGIN\n1. A\n2. B\n2. B2\nEND";
+        let err = parse_numbered_response(response, 2).unwrap_err();
+        assert!(err.to_string().contains("Duplicate"));
+    }
+
+    #[test]
+    fn parse_model_wraps_items_into_multiple_lines() {
+        // model đôi khi tự xuống dòng thật, parser phải gom continuation
+        let response = "BEGIN\n1. This is a very long line that\nwraps on next line\n2. Short\nEND";
+        let result = parse_numbered_response(response, 2).unwrap();
+        assert!(result[0].contains("wraps on next line"));
+        assert_eq!(result[1], "Short");
+    }
+
+    #[test]
+    fn parse_markdown_noise_does_not_break() {
+        let response = "```text\nBEGIN\n1. A\n2. B\nEND\n```\n";
+        let result = parse_numbered_response(response, 2).unwrap();
+        assert_eq!(result, vec!["A", "B"]);
+    }
+
+    #[test]
+    fn parse_keeps_literal_token_when_escaped() {
+        // literal <NL> trong translation phải round-trip đúng
+        let original = "Hello <NL> world";
+        let encoded = encode(original);          // -> "Hello <NL><NL> world"
+        let response = format!("BEGIN\n1. {}\nEND", encoded);
+        let result = parse_numbered_response(&response, 1).unwrap();
+        assert_eq!(result[0], original);
+    }
+
+    // -----------------------
+    // 3) Prompt / Count consistency tests
+    // -----------------------
+    // Mục tiêu: đảm bảo prompt builder dùng translate_ids làm nguồn count
+    // và thứ tự mapping theo translate_ids.
+
+    #[derive(Clone)]
+    struct TestCue { id: usize, text: String }
+
+    #[derive(Clone)]
+    struct TestBatch { cues: Vec<TestCue>, translate_ids: Vec<usize> }
+
+    // Nếu bạn muốn test trực tiếp build_translation_prompt(batch,...) của bạn
+    // thì thay TestCue/TestBatch bằng struct thật trong codebase.
+
+    fn build_prompt_test(batch: &TestBatch) -> (String, usize) {
+        let count = batch.translate_ids.len();
+        let mut lines = Vec::with_capacity(count);
+
+        for (idx, cue_id) in batch.translate_ids.iter().enumerate() {
+            let cue = batch.cues.iter().find(|c| &c.id == cue_id).unwrap();
+            lines.push(format!("{}. {}", idx + 1, encode(&cue.text)));
+        }
+
+        (lines.join("\n"), count)
+    }
+
+    #[test]
+    fn prompt_count_matches_translate_ids_not_all_cues() {
+        let batch = TestBatch {
+            cues: vec![
+                TestCue { id: 10, text: "A".into() },
+                TestCue { id: 11, text: "B".into() },
+                TestCue { id: 12, text: "C".into() }, // cue này không dịch
+            ],
+            translate_ids: vec![10, 11],
+        };
+
+        let (prompt_body, count) = build_prompt_test(&batch);
+        assert_eq!(count, 2);
+        assert!(prompt_body.contains("1. A"));
+        assert!(prompt_body.contains("2. B"));
+        assert!(!prompt_body.contains("3. C"));
+    }
+
+    #[test]
+    fn prompt_order_follows_translate_ids() {
+        let batch = TestBatch {
+            cues: vec![
+                TestCue { id: 1, text: "First".into() },
+                TestCue { id: 2, text: "Second".into() },
+            ],
+            translate_ids: vec![2, 1], // đảo thứ tự
+        };
+
+        let (prompt_body, _count) = build_prompt_test(&batch);
+        let lines: Vec<&str> = prompt_body.lines().collect();
+        assert_eq!(lines[0], "1. Second");
+        assert_eq!(lines[1], "2. First");
+    }
+}
