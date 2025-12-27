@@ -60,8 +60,8 @@ export default function TranslateSettingsPage() {
                                 : "border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900")
                         }
                     >
-                        <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">ProxyPal</div>
-                        <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Local proxy endpoint</div>
+                        <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">Local</div>
+                        <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">Use local translation service</div>
                     </button>
 
                     <button
@@ -107,27 +107,30 @@ export default function TranslateSettingsPage() {
                 <Show when={settings().provider === "proxypal"}>
                     <div class="mt-4 p-4 rounded-md border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
                         <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                            <span class="text-success font-semibold">✓</span> Using local ProxyPal endpoint
+                            <span class="text-success font-semibold">✓</span> Using local service
                         </div>
                         <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            Ensure ProxyPal is running on port 8317. No API key is required.
+                            No API key required for local translation.
                         </div>
                     </div>
                 </Show>
 
                 <div class="mt-6 space-y-4">
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Base URL
-                        </label>
-                        <input
-                            type="text"
-                            value={settings().baseUrl}
-                            onInput={(e) => updateSettings({ baseUrl: e.currentTarget.value })}
-                            class="w-full px-3 py-2 rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950"
-                            placeholder="https://api.openai.com/v1"
-                        />
-                    </div>
+                    {/* Base URL hidden - always defaults to localhost:8317/v1 */}
+                    <Show when={false}>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Base URL
+                            </label>
+                            <input
+                                type="text"
+                                value={settings().baseUrl}
+                                onInput={(e) => updateSettings({ baseUrl: e.currentTarget.value })}
+                                class="w-full px-3 py-2 rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950"
+                                placeholder="https://api.openai.com/v1"
+                            />
+                        </div>
+                    </Show>
 
                     <div>
                         <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Model</label>
@@ -136,24 +139,24 @@ export default function TranslateSettingsPage() {
                             onChange={(e) => updateSettings({ model: e.currentTarget.value })}
                             class="w-full px-3 py-2 rounded-md border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 cursor-pointer"
                         >
-                            <optgroup label="Gemini (ProxyPal OAuth)">
+                            <optgroup label="Gemini (OAuth)">
                                 <option value="gemini-2.5-flash">Gemini 2.5 Flash (Fast)</option>
                                 <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite (Faster)</option>
                                 <option value="gemini-2.5-pro">Gemini 2.5 Pro (Quality)</option>
                                 <option value="gemini-claude-sonnet-4-5">Antigravity Claude Sonnet 4.5</option>
                                 <option value="gemini-claude-opus-4-5">Antigravity Claude Opus 4.5</option>
                             </optgroup>
-                            <optgroup label="Claude (ProxyPal OAuth)">
+                            <optgroup label="Claude (OAuth)">
                                 <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
                                 <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku (Fast)</option>
                                 <option value="claude-3-opus-20240229">Claude 3 Opus (Quality)</option>
                             </optgroup>
-                            <optgroup label="Qwen (ProxyPal OAuth)">
+                            <optgroup label="Qwen (OAuth)">
                                 <option value="qwen-max">Qwen Max</option>
                                 <option value="qwen-plus">Qwen Plus</option>
                                 <option value="qwen-turbo">Qwen Turbo (Fast)</option>
                             </optgroup>
-                            <optgroup label="Copilot/GPT (ProxyPal OAuth)">
+                            <optgroup label="Copilot/GPT (OAuth)">
                                 <option value="gpt-5.1">GPT-5.1 (Best)</option>
                                 <option value="gpt-5">GPT-5</option>
                                 <option value="gpt-5-mini">GPT-5 Mini (Fast)</option>

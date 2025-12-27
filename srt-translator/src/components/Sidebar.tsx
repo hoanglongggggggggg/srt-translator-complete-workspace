@@ -64,7 +64,7 @@ export function Sidebar() {
           SRT Translator
         </div>
         <div class="text-xs text-gray-600 dark:text-gray-400 mt-1">
-          Translation + ProxyPal settings
+          Translation + advanced settings
         </div>
       </div>
 

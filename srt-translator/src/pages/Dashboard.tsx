@@ -1,4 +1,5 @@
-import { For, onMount } from "solid-js";
+import { For, Show, onMount, onCleanup, createSignal } from "solid-js";
+import { invoke } from "@tauri-apps/api/core";
 import { startProxy, stopProxy, type Provider } from "../lib/tauri";
 import { appStore } from "../stores/app";
 import { toastStore } from "../stores/toast";
@@ -12,22 +13,68 @@ const PROVIDERS: ProviderRow[] = [
   { id: "gemini", label: "Gemini" },
   { id: "claude", label: "Claude" },
   { id: "qwen", label: "Qwen" },
-  { id: "openai", label: "Copilot" },
+  { id: "copilot", label: "Copilot" },
   { id: "iflow", label: "iFlow" },
   { id: "antigravity", label: "Antigravity" },
 ];
 
+type ProviderStatus = {
+  [key in Provider]?: {
+    connected: boolean;
+    sessions: number;
+    email?: string;
+  };
+};
+
 export default function DashboardPage() {
-  const { proxyStatus, authStatus, config, initialize, setProxyStatus } = appStore;
+  const { proxyStatus, config, initialize, setProxyStatus } = appStore;
+  const [providerStatus, setProviderStatus] = createSignal<ProviderStatus>({});
+
+  const checkAuthStatus = async () => {
+    try {
+      const authFiles = await invoke<Array<{
+        provider: string;
+        email: string;
+        status: string;
+      }>>("get_auth_status");
+
+      const status: ProviderStatus = {};
+
+      for (const file of authFiles) {
+        // Map backend provider names to frontend names
+        const provider = file.provider === "anthropic" ? "claude"
+          : file.provider === "codex" ? "copilot"
+            : file.provider === "gemini-cli" ? "gemini"
+              : file.provider as Provider;
+
+        if (!status[provider]) {
+          status[provider] = { connected: true, sessions: 0 };
+        }
+        status[provider]!.sessions++;
+        if (file.email && !status[provider]!.email) {
+          status[provider]!.email = file.email;
+        }
+      }
+
+      setProviderStatus(status);
+    } catch (e) {
+      console.error("Failed to check auth status:", e);
+    }
+  };
 
   onMount(() => {
     void initialize();
+    checkAuthStatus();
+    const interval = setInterval(checkAuthStatus, 5000);
+    onCleanup(() => clearInterval(interval));
   });
 
   const providerCount = (id: Provider): number => {
-    const s = authStatus() as any;
-    const n = s[id];
-    return typeof n === "number" ? n : 0;
+    return providerStatus()[id]?.sessions || 0;
+  };
+
+  const providerEmail = (id: Provider): string | undefined => {
+    return providerStatus()[id]?.email;
   };
 
   const handleStart = async () => {
@@ -72,9 +119,6 @@ export default function DashboardPage() {
               </span>
             </div>
             <div class="mt-2 text-xs text-gray-600 dark:text-gray-400">
-              Endpoint: {proxyStatus().endpoint}
-            </div>
-            <div class="mt-1 text-xs text-gray-600 dark:text-gray-400">
               Port: {config().port}
             </div>
           </div>
@@ -119,6 +163,9 @@ export default function DashboardPage() {
                 </div>
                 <div class="mt-2 text-xs text-gray-600 dark:text-gray-400">
                   Sessions: {providerCount(p.id)}
+                  <Show when={providerEmail(p.id)}>
+                    <div class="mt-1 text-xs">{providerEmail(p.id)}</div>
+                  </Show>
                 </div>
               </div>
             )}

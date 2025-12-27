@@ -12,7 +12,7 @@ import ApiKeysPage from "./pages/ApiKeys";
 import AuthFilesPage from "./pages/AuthFiles";
 import LogViewerPage from "./pages/LogViewer";
 import AnalyticsPage from "./pages/Analytics";
-import ProxyPalSettingsPage from "./pages/Settings";
+import SettingsPage from "./pages/Settings";
 
 import TranslatePage from "./pages/Translate";
 import TranslateSettingsPage from "./pages/TranslateSettings";
@@ -33,7 +33,7 @@ render(
         <Route path="/auth-files" component={AuthFilesPage} />
         <Route path="/logs" component={LogViewerPage} />
         <Route path="/analytics" component={AnalyticsPage} />
-        <Route path="/settings" component={ProxyPalSettingsPage} />
+        <Route path="/settings" component={SettingsPage} />
 
         <Route path="/translate-settings" component={TranslateSettingsPage} />
         <Route path="/preview" component={PreviewPage} />

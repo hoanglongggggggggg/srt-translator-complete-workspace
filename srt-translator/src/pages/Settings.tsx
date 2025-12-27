@@ -7,7 +7,7 @@ function cloneConfig(cfg: AppConfig): AppConfig {
   return JSON.parse(JSON.stringify(cfg)) as AppConfig;
 }
 
-export default function ProxyPalSettingsPage() {
+export default function SettingsPage() {
   const [proxyStatus, setProxyStatus] = createSignal<ProxyStatus>({
     running: false,
     port: 8317,

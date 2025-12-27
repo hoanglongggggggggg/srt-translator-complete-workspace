@@ -40,6 +40,8 @@ pub fn run() {
             commands::proxypal::get_proxypal_status,
             commands::proxy_config::get_proxy_config,
             commands::proxy_config::save_proxy_config,
+            commands::proxy_config::get_auth_status,
+            commands::proxy_config::poll_oauth_status,
             commands::proxy_config::trigger_gemini_oauth,
             commands::proxy_config::add_gemini_key,
             commands::proxy_config::remove_gemini_key,
@@ -57,6 +59,7 @@ pub fn run() {
             commands::proxy_config::update_thinking_budget,
             commands::proxy_config::update_reasoning_effort,
             commands::proxy_config::restart_proxy,
+            commands::browser::open_external_browser,
         ])
         .setup(|app| {
             // ============= AUTO-START CLIPPROXYAPI (Direct) =============
@@ -112,6 +115,7 @@ pub fn run() {
 
                     let config_arg = proxy_config_path.to_string_lossy().to_string();
                     cmd = cmd
+                        .current_dir(&writable_path) // Set working dir so auths/ saves here!
                         .env("WRITABLE_PATH", writable_path.to_string_lossy().to_string())
                         .arg("--config")
                         .arg(config_arg);

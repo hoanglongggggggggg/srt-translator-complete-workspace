@@ -297,25 +297,39 @@ pub fn save_proxy_config(config_data: ProxyConfigData) -> Result<(), String> {
 // ============= Gemini Commands =============
 
 #[tauri::command]
-pub async fn trigger_gemini_oauth(app: tauri::AppHandle) -> Result<String, String> {
-    let clipproxy = get_clipproxy(&app)?;
-    let output = clipproxy
-        .command(&app)?
-        .arg("-login")
-        .output()
+pub async fn trigger_gemini_oauth(_app: tauri::AppHandle) -> Result<OAuthResponse, String> {
+    let config = AppConfig::load().map_err(|e| format!("Failed to load config: {}", e))?;
+    let port = config.port;
+    
+    // Call Management API to get OAuth URL
+    // Add is_webui=true to enable embedded callback forwarder
+    let url = format!("http://localhost:{}/v0/management/gemini-cli-auth-url?is_webui=true", port);
+    
+    let client = reqwest::Client::new();
+    let response = client.get(&url)
+        .header("Authorization", "Bearer proxypal-mgmt-key")
+        .send()
         .await
-        .map_err(|e| format!("Failed to run Gemini OAuth: {e}"))?;
-
-    if output.status.success() {
-        Ok("Gemini login completed successfully".into())
-    } else {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        Err(format!(
-            "Gemini login failed (exit {:?}). {}",
-            output.status.code(),
-            stderr.trim()
-        ))
+        .map_err(|e| format!("Failed to call management API: {}", e))?;
+    
+    if !response.status().is_success() {
+        return Err(format!("Management API returned error: {}", response.status()));
     }
+    
+    let json: serde_json::Value = response.json()
+        .await
+        .map_err(|e| format!("Failed to parse response: {}", e))?;
+    
+    // Extract OAuth URL and state from response
+    let oauth_url = json.get("url").and_then(|v| v.as_str())
+        .ok_or_else(|| format!("No URL in response: {:?}", json))?;
+    let state = json.get("state").and_then(|v| v.as_str())
+        .ok_or_else(|| format!("No state in response: {:?}", json))?;
+    
+    Ok(OAuthResponse {
+        url: oauth_url.to_string(),
+        state: state.to_string(),
+    })
 }
 
 #[tauri::command]
@@ -442,38 +456,131 @@ pub fn update_copilot_config(copilot: CopilotConfigData) -> Result<(), String> {
     Ok(())
 }
 
-// ============= OAuth Commands =============
+// ============= OAuth & Auth Status Management =============
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct OAuthResponse {
+    pub url: String,
+    pub state: String,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct AuthFile {
+    pub id: String,
+    pub name: String,
+    pub provider: String,
+    #[serde(default)]
+    pub status: String,
+    #[serde(default)]
+    pub email: String,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+struct AuthFilesResponse {
+    files: Vec<AuthFile>,
+}
 
 #[tauri::command]
-pub async fn trigger_oauth_login(app: tauri::AppHandle, provider: String) -> Result<String, String> {
-    let clipproxy = get_clipproxy(&app)?;
+pub async fn get_auth_status(_app: tauri::AppHandle) -> Result<Vec<AuthFile>, String> {
+    let config = AppConfig::load().map_err(|e| format!("Failed to load config: {}", e))?;
+    let port = config.port;
+    
+    let url = format!("http://localhost:{}/v0/management/auth-files", port);
+    
+    let client = reqwest::Client::new();
+    let response = client.get(&url)
+        .header("Authorization", "Bearer proxypal-mgmt-key")
+        .send()
+        .await
+        .map_err(|e| format!("Failed to call management API: {}", e))?;
+    
+    if !response.status().is_success() {
+        return Ok(Vec::new()); // Return empty if API fails
+    }
+    
+    let json: AuthFilesResponse = response.json()
+        .await
+        .map_err(|e| format!("Failed to parse response: {}", e))?;
+    
+    Ok(json.files)
+}
 
-    let flag = match provider.as_str() {
-        "copilot" => "-codex-login",
-        "claude" => "-claude-login",
-        "qwen" => "-qwen-login",
-        "auth0" => "-auth0-login", // Warning: Not in help output, might fail
+#[tauri::command]
+pub async fn poll_oauth_status(_app: tauri::AppHandle, state: String) -> Result<String, String> {
+    let config = AppConfig::load().map_err(|e| format!("Failed to load config: {}", e))?;
+    let port = config.port;
+    
+    let url = format!("http://localhost:{}/v0/management/get-auth-status?state={}", port, state);
+    
+    let client = reqwest::Client::new();
+    let response = client.get(&url)
+        .header("Authorization", "Bearer proxypal-mgmt-key")
+        .send()
+        .await
+        .map_err(|e| format!("Failed to call management API: {}", e))?;
+    
+    if !response.status().is_success() {
+        return Err(format!("Management API returned error: {}", response.status()));
+    }
+    
+    let json: serde_json::Value = response.json()
+        .await
+        .map_err(|e| format!("Failed to parse response: {}", e))?;
+    
+    // Return status: "wait", "ok", or "error"
+    if let Some(status) = json.get("status").and_then(|v| v.as_str()) {
+        Ok(status.to_string())
+    } else {
+        Err(format!("No status in response: {:?}", json))
+    }
+}
+
+// ============= OAuth Login Commands =============
+
+#[tauri::command]
+pub async fn trigger_oauth_login(_app: tauri::AppHandle, provider: String) -> Result<OAuthResponse, String> {
+    let config = AppConfig::load().map_err(|e| format!("Failed to load config: {}", e))?;
+    let port = config.port;
+    
+    // Map provider to Management API endpoint
+    let endpoint = match provider.as_str() {
+        "copilot" => "codex-auth-url",
+        "claude" => "anthropic-auth-url",
+        "qwen" => "qwen-auth-url",
+        "antigravity" => "antigravity-auth-url",
+        "iflow" => "iflow-auth-url",
         _ => return Err(format!("Unknown OAuth provider: {}", provider)),
     };
-
-    let output = clipproxy
-        .command(&app)?
-        .arg(flag)
-        .output()
+    
+    // Call Management API
+    // Add is_webui=true to enable embedded callback forwarder
+    let url = format!("http://localhost:{}/v0/management/{}?is_webui=true", port, endpoint);
+    
+    let client = reqwest::Client::new();
+    let response = client.get(&url)
+        .header("Authorization", "Bearer proxypal-mgmt-key")
+        .send()
         .await
-        .map_err(|e| format!("Failed to run OAuth login: {e}"))?;
-
-    if output.status.success() {
-        Ok(format!("{} OAuth login completed successfully", provider))
-    } else {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        Err(format!(
-            "{} OAuth login failed (exit {:?}). {}",
-            provider,
-            output.status.code(),
-            stderr.trim()
-        ))
+        .map_err(|e| format!("Failed to call management API: {}", e))?;
+    
+    if !response.status().is_success() {
+        return Err(format!("Management API returned error: {}", response.status()));
     }
+    
+    let json: serde_json::Value = response.json()
+        .await
+        .map_err(|e| format!("Failed to parse response: {}", e))?;
+    
+    // Extract OAuth URL and state from response
+    let oauth_url = json.get("url").and_then(|v| v.as_str())
+        .ok_or_else(|| format!("No URL in response: {:?}", json))?;
+    let state = json.get("state").and_then(|v| v.as_str())
+        .ok_or_else(|| format!("No state in response: {:?}", json))?;
+    
+    Ok(OAuthResponse {
+        url: oauth_url.to_string(),
+        state: state.to_string(),
+    })
 }
 
 // ============= Advanced Settings Commands =============

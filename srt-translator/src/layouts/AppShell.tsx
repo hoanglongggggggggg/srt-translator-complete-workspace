@@ -1,11 +1,11 @@
-import { Outlet, useLocation } from "@solidjs/router";
+import { useLocation, type RouteSectionProps } from "@solidjs/router";
 import { Show, onMount } from "solid-js";
 import { Sidebar } from "../components/Sidebar";
 import { TopBar } from "../components/TopBar";
 import { ToastHost } from "../components/ToastHost";
 import { appStore } from "../stores/app";
 
-export default function AppShell() {
+export default function AppShell(props: RouteSectionProps) {
   const location = useLocation();
 
   onMount(() => {
@@ -20,7 +20,7 @@ export default function AppShell() {
         when={!isStandalone()}
         fallback={
           <main class="min-h-screen p-6">
-            <Outlet />
+            {props.children}
           </main>
         }
       >
@@ -29,7 +29,7 @@ export default function AppShell() {
           <div class="flex-1 flex flex-col min-w-0">
             <TopBar />
             <main class="flex-1 p-6 min-w-0">
-              <Outlet />
+              {props.children}
             </main>
           </div>
         </div>

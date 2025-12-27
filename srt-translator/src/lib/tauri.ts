@@ -18,6 +18,7 @@ export type Provider =
   | "qwen"
   | "iflow"
   | "vertex"
+  | "copilot"
   | "antigravity";
 
 export interface AuthStatus {
@@ -170,22 +171,23 @@ export async function stopProxy(): Promise<ProxyStatus> {
 // OAuth / Auth
 // ============================
 
-export async function openOAuth(provider: Provider): Promise<string> {
-  try {
-    return await invokeSafe<string>("open_oauth", { provider });
-  } catch {
-    // Fallback to current-tool CLI proxy OAuth triggers.
-    if (provider === "gemini") {
-      return await invokeSafe<string>("trigger_gemini_oauth");
-    }
+export interface OAuthResponse {
+  url: string;
+  state: string;
+}
 
-    const mapped = provider === "openai" ? "copilot" : provider;
-    if (mapped === "claude" || mapped === "qwen" || mapped === "copilot") {
-      return await invokeSafe<string>("trigger_oauth_login", { provider: mapped });
-    }
-
-    return "OAuth flow not available in this build.";
+export async function openOAuth(provider: Provider): Promise<OAuthResponse> {
+  // Call current-tool CLI proxy OAuth triggers which return {url, state}
+  if (provider === "gemini") {
+    return await invokeSafe<OAuthResponse>("trigger_gemini_oauth");
   }
+
+  const mapped = provider === "openai" ? "copilot" : provider;
+  if (mapped === "claude" || mapped === "qwen" || mapped === "copilot" || mapped === "iflow" || mapped === "antigravity") {
+    return await invokeSafe<OAuthResponse>("trigger_oauth_login", { provider: mapped });
+  }
+
+  throw new Error(`OAuth flow not available for provider: ${provider}`);
 }
 
 export async function pollOAuthStatus(_oauthState: string): Promise<boolean> {
@@ -311,7 +313,7 @@ export async function setOpenAICompatibleProviders(providers: OpenAICompatiblePr
   await saveConfig({ ...cfg, ampOpenaiProviders: providers });
 }
 
-export async function testOpenAIProvider(_provider: OpenAICompatibleProvider): Promise<{ success: boolean; message: string; modelsFound?: number }>{
+export async function testOpenAIProvider(_provider: OpenAICompatibleProvider): Promise<{ success: boolean; message: string; modelsFound?: number }> {
   try {
     const res = await invokeSafe<{ success: boolean; message: string; modelsFound?: number }>("test_openai_provider", { provider: _provider });
     return res;
@@ -328,7 +330,7 @@ export async function onProxyStatusChanged(handler: (status: ProxyStatus) => voi
   try {
     return await listen<ProxyStatus>("proxy-status-changed", (e) => handler(e.payload));
   } catch {
-    return () => {};
+    return () => { };
   }
 }
 
@@ -336,7 +338,7 @@ export async function onAuthStatusChanged(handler: (status: AuthStatus) => void)
   try {
     return await listen<AuthStatus>("auth-status-changed", (e) => handler(e.payload));
   } catch {
-    return () => {};
+    return () => { };
   }
 }
 
@@ -349,7 +351,7 @@ export async function onOAuthCallback(handler: (data: OAuthCallback) => void): P
   try {
     return await listen<OAuthCallback>("oauth-callback", (e) => handler(e.payload));
   } catch {
-    return () => {};
+    return () => { };
   }
 }
 
@@ -357,7 +359,7 @@ export async function onTrayToggleProxy(handler: (shouldStart: boolean) => void)
   try {
     return await listen<boolean>("tray-toggle-proxy", (e) => handler(e.payload));
   } catch {
-    return () => {};
+    return () => { };
   }
 }
 
